@@ -17,9 +17,11 @@ Usage:
 
 ```javascript
 var  BloomFilter = require("murmur-bloomfilter");
-var  BloomFilter = require("./src/index.js");
 
-//Simple Usage: create a filter with  1000 epected item and 0.01 false positive probability.
+//Simple Usage: create a filter with  1000 expected item and 0.01 false positive probability.
+/*
+ie: if you are expecting to load 1000 items and you want to maintain a probability of not more than 0.01 false positives
+*/
 //Recomendded: it will calculate the best setup for your need.
 var filter = new BloomFilter(1000, 0.01);
 
