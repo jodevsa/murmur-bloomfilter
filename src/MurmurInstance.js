@@ -5,13 +5,22 @@ const {
 } = require('murmurhash-native');
 
 function readUInt64BE(x, offset = 0) {
-  return x.readUInt32BE(offset) * 10 ** 10 + x.readUInt32BE(offset +4);
+  /// this could affect ND of the hash function, needs research.
+  const n=x.readUInt32BE(offset) *0x100000000 + x.readUInt32BE(offset +4);
+
+
+  if(getBitsNeeded(n)!=64){
+    throw new Error("wrong settings 10,murmuristance")
+  }
+  return n;
 
 }
 function readUInt128BE(x, offset = 0) {
   // sitll not tested .....
   // wrote it fast, not sure if this is accurate ? ?
-  return x.readUInt32BE(offset) * 10 ** 20 + x.readUInt32BE(offset + 4)*10**10 +
+  // buggy shit.
+  exit();
+  return x.readUInt32BE(offset) * 0x100000000**2 + x.readUInt32BE(offset + 4)* 0x100000000 +
     x.readUInt32BE(offset + 8);
 }
 
@@ -35,7 +44,7 @@ class MurmurInstance {
     //larger or equal to the bitarray size to mantain normal distribution.
     //not sure about the above statement still have not made my research.
     this.hashSize = getBitsNeeded(this.size);
-    console.log(this.hashSize);
+    console.log(this.hashSize,111);
   }
   generateHash(key, seed) {
     switch (this.hashSize) {
@@ -50,7 +59,7 @@ class MurmurInstance {
     }
   }
   _handle128HashFunction(key, seed){
-    
+
     return readUInt128BE(murmurHash64(key, seed, 'buffer'), 0)%this.size;
   }
   _handle64HashFunction(key, seed) {
@@ -58,7 +67,8 @@ class MurmurInstance {
 
   }
   _handle32HashFunction(key, seed) {
-    return murmurHash32(key, seed, 'number') %this.size;
+    const n=murmurHash32(key, seed, 'number');
+    return n%this.size;
   }
 
 }
