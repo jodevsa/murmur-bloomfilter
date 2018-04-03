@@ -3,6 +3,7 @@ const buffer = require('buffer');
 const BufferHack = require('./BufferHack');
 const MurmurInstance = require('./MurmurInstance.js');
 const fs = require('fs');
+const v8 = require('v8');
 
 function calculateHashCount(size, n) {
   const m = size * 8;
@@ -33,31 +34,93 @@ class BloomFilter {
       //this.data.writeUInt8(this.k, 0);
       this.count = 0;
     }
+
     this.hashInstance = new MurmurInstance(this.size);
   }
   currentFPP() {
     return (1 - (1 - (1 / this.size)) ** (this.k * this.count)) ** this.k;
   }
-  serialize() {
-    return this.data;
+  unserialize(path, cb) {
+    const stream = fs.createReadStream(path);
+    stream.on('readable', () => {
+      //console.log(stream.read(1));
+    })
+
   }
-  add(key) {
+  serialize(path, cb) {
+    /// refactor in future.
+    const stream = fs.createWriteStream(path, {flags: 'a'});
+    let counter = 0;
+    let answer = true;
+    const buffers = this.data.data;
+    stream.once('open', () => {
+      const k = new Buffer(1);
+      k[0] = this.k;
+      answer = stream.write(k);
+      while (answer) {
+        const buffer = buffers[counter];
+        answer = stream.write(buffer);
+        counter++;
+      }
+    });
+    stream.on('drain', () => {
+      if (counter === buffers.length) {
+        return cb();
+      }
+      answer = true;
+      while (answer) {
+        const buffer = buffers[counter];
+        answer = stream.write(buffer);
+        counter++;
+      }
+    });
+  }
+  async add(key, cb) {
     this.count++;
-    for (let i = 0; i < this.k; i++) {
-      const digest = this.hashInstance.generateHash(key, i) % this.size;
-      ///    this.data[digest + this.offset] = true;
-      this.data.change(digest + this.offset, true);
+    if (typeof(cb) === 'function') {
+      for (let i = 0; i < this.k; i++) {
+        const digest = (await this.hashInstance.generateHashAsync(key, i)) % this.size;
+        this.data.change(digest + this.offset, true);
+      }
+      return cb();
+    } else {
+      for (let i = 0; i < this.k; i++) {
+        const digest = this.hashInstance.generateHash(key, i) % this.size;
+        ///    this.data[digest + this.offset] = true;
+        this.data.change(digest + this.offset, true);
+      }
     }
   }
-  test(key) {
+  test(key, cb) {
+
+    if (typeof(cb) != 'function') {
+      return this._test(key, cb);
+    } else {
+      return this._testAsync(key, cb);
+    }
+  }
+  _test(key, cb) {
     for (let i = 0; i < this.k; i++) {
 
-      const digest = this.hashInstance.generateHash(key, i);
+      const digest = this.hashInstance.generateHash(key, i) % this.size;
       if (!this.data.get(digest + this.offset)) {
         return false;
       }
     }
     return true;
+
+  }
+  async _testAsync(key, cb) {
+
+    for (let i = 0; i < this.k; i++) {
+
+      const digest = (await this.hashInstance.generateHash(key, i)) % this.size;
+      if (!this.data.get(digest + this.offset)) {
+        cb(false);
+      }
+    }
+    cb(true);
+
   }
 
 }
