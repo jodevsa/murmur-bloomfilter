@@ -1,21 +1,44 @@
+
 const {murmurHash32, murmurHash64, murmurHash128} = require('murmurhash-native');
 const {murmurHash32Async, murmurHash64Async, murmurHash128Async} = require('murmurhash-native/promisify')();
 const BufferPool = require('./BufferPool');
 const assert = require('assert');
-function generateUInt48BE(x, offset = 0,bits) {
-  /// this could affect ND of the hash function, needs research.
-  //const n = ((x.readUInt16BE(offset) * 0x1000000000000) % bits)x
-  // this will read 53 bits.
-const n =(x.readUInt32BE(0) & 0x001FFFFF) * 0x100000000 + x.readUInt32BE(4);
-  return n % bits;
+function generateUInt64BE(x, offset = 0,bits) {
+  /*
+  NodeJS maximum safe Number is 2**53 -1, currently does not support reading
+  from a 64 bit ArrayBufer, i had to read the buffer with techniques
+  that compute modulo of  multiple part of the buffer based on modulo
+  theorems, so that i can ensure all generated numbers are less than 53 bit.
 
+  recourses:
+  https://www.khanacademy.org/computing/computer-science/cryptography/modarithmetic/a/what-is-modular-arithmetic
+  https://www.khanacademy.org/computing/computer-science/cryptography/modarithmetic/a/modular-multiplication
+  https://www.khanacademy.org/computing/computer-science/cryptography/modarithmetic/a/modular-addition-and-subtraction
+  */
+
+
+const p1modulo=(
+  //max of 16 bit
+  (x.readUInt16BE(0) % bits)
+  //max of  49 bit
+  * (0x1000000000000 % bits))% bits;
+const n =((p1modulo)
+            //max of 48 bit
+          + ((x.readUInt16BE(2) *0x100000000)% bits)
+            //max of 32 bit
+          + ((x.readUInt16BE(4) *0x10000 ) % bits)
+            //max of 16 bit
+          + (((x.readUInt16BE(6)) % bits)));
+
+  assert.equal(n>0,true);
+  return n % bits;
 }
 function readUInt128BE(x, offset = 0) {
   // sitll not tested .....
   // wrote it fast, not sure if this is accurate ? ?
   // buggy shit.
   exit();
-  return x.readUInt32BE(offset) * 0x100000000 ** 2 + x.readUInt32BE(offset + 4) * 0x100000000 + x.readUInt32BE(offset + 8);
+  return x.readUInt32BE(offset) * 0x100000000 + x.readUInt32BE(offset + 4);
 }
 
 function getBitsNeeded(number) {
@@ -48,7 +71,7 @@ class MurmurInstance {
       case 32:
         return this._handle32HashFunction(key, seed,bits);
       case 64:
-        return this._handle64HashFunction(key, seed);
+        return this._handle64HashFunction(key, seed, bits);
         break;
       default:
         return this._handle128HashFunction(key, seed);
@@ -84,7 +107,7 @@ class MurmurInstance {
     const B = this._bpool.use();
     if (typeof(cb) != 'function') {
       murmurHash64(key, seed, B.buffer);
-      const n = generateUInt48BE(B.buffer, 0,bits);
+      const n = generateUInt64BE(B.buffer, 0,bits);
       B.free();
       return n;
     } else {
@@ -95,13 +118,13 @@ class MurmurInstance {
       });
     }
   }
-  _handle32HashFunction(key, seed,bits, cb) {
+  _handle32HashFunction(key, seed, bits) {
     const B = this._bpool.use();
     if (typeof(cb) != 'function') {
       murmurHash32(key, seed, B.buffer);
       const n = B.buffer.readUInt32BE();
       B.free();
-      return n % bits;;
+      return n%bits;
     } else {
       murmurHash32(key, seed, B.buffer,(err,digest)=>{
         const n = B.buffer.readUInt32BE();
