@@ -82,7 +82,7 @@ class MurmurInstance {
   _handle128HashFunction(key, seed, cb) {
 
     assert.notEqual(typeof(cb), 'function');
-    return readUInt128BE(murmurHash64(key, seed, 'buffer'), 0) % this.size;
+    return readUInt128BE(murmurHash64(key, seed, 'buffer'), 0);
   }
   _handle64HashFunction(key, seed) {
     console.log('wootddd',this._bpool)
@@ -91,12 +91,12 @@ class MurmurInstance {
       murmurHash64BE(key, seed, B.buffer);
       const n = readUInt64BE(B.buffer, 0);
       B.free();
-      return n % this.size;
+      return n;
     } else {
       murmurHash64BE(key, seed, B.buffer).then(() => {
         const n = readUInt64BE(B.buffer, 0);
         B.free();
-        return n % this.size;
+        return n;
       });
     }
   }
@@ -106,12 +106,13 @@ class MurmurInstance {
       murmurHash32(key, seed, B.buffer);
       const n = B.buffer.readUInt32BE();
       B.free();
-      return n % this.size;
+      return n;
     } else {
-      murmurHash32Async(key, seed, B.buffer).then(() => {
+      murmurHash32(key, seed, B.buffer,(err,digest)=>{
         const n = B.buffer.readUInt32BE();
         B.free();
-        cb(n % this.size)
+
+        cb(n)
 
       });
     }
