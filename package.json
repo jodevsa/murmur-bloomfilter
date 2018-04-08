@@ -9,10 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bitview": "^0.1.4",
-    "murmurhash-native": "^3.2.2",
-    "progress": "^2.0.0",
-    "webworker-threads": "^0.7.13"
+    "bitview": "^0.1.5",
+    "murmurhash-native": "^3.2.2"
   },
   "devDependencies": {
     "jest": "^22.4.3"
