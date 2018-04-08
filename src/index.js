@@ -151,15 +151,15 @@ class BloomFilter {
     if (typeof(cb) === 'function') {
       return (async () => {
         for (let i = 0; i < this.k; i++) {
-          const digest = (await this.hashInstance.generateHashAsync(key, i));
-          this.bitView.set(digest % this.bitLength, 1);
+          const digest = (await this.hashInstance.generateHashAsync(key, i,this.bitLength));
+          this.bitView.set(digest, 1);
         }
         return cb(true);
       })();
     } else {
       for (let i = 0; i < this.k; i++) {
-        const digest = this.hashInstance.generateHash(key, i);
-        this.bitView.set(digest % this.bitLength, 1);
+        const digest = this.hashInstance.generateHash(key, i,this.bitLength);
+        this.bitView.set(digest, 1);
       }
       return true;
     }
@@ -175,8 +175,8 @@ class BloomFilter {
   async addAsync(key) {
     for (let i = 0; i < this.k; i++) {
 
-      const digest = (await this.hashInstance.generateHashAsync(key, i));
-      this.bitView.set(digest + this.offset, true);
+      const digest = (await this.hashInstance.generateHashAsync(key, i,this.bitLength));
+      this.bitView.set(digest, true);
     }
     return true;
   }
@@ -192,8 +192,8 @@ class BloomFilter {
   _test(key, cb) {
     for (let i = 0; i < this.k; i++) {
 
-      const digest = this.hashInstance.generateHash(key, i);
-      if (!this.bitView.get(digest % this.bitLength)) {
+      const digest = this.hashInstance.generateHash(key, i,this.bitLength);
+      if (!this.bitView.get(digest)) {
         return false;
       }
     }
@@ -204,8 +204,8 @@ class BloomFilter {
 
     for (let i = 0; i < this.k; i++) {
 
-      const digest = (await this.hashInstance.generateHash(key, i));
-      if (!this.bitView.get(digest + this.offset)) {
+      const digest = (await this.hashInstance.generateHash(key, i,this.bitLength));
+      if (!this.bitView.get(digest)) {
         cb(false);
       }
     }

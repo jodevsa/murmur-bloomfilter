@@ -2,17 +2,12 @@ const {murmurHash32, murmurHash64, murmurHash128} = require('murmurhash-native')
 const {murmurHash32Async, murmurHash64Async, murmurHash128Async} = require('murmurhash-native/promisify')();
 const BufferPool = require('./BufferPool');
 const assert = require('assert');
-function readUInt64BE(x, offset = 0) {
+function generateUInt48BE(x, offset = 0,bits) {
   /// this could affect ND of the hash function, needs research.
-  const n = x.readUInt32BE(offset) * 0x100000000 + x.readUInt32BE(offset + 4);
-
-  /*
-  if(getBitsNeeded(n)!=64){
-    throw new Error("wrong settings 10,murmuristance")
-  }
-*/
-
-  return n;
+  //const n = ((x.readUInt16BE(offset) * 0x1000000000000) % bits)x
+  // this will read 53 bits.
+const n =(x.readUInt32BE(0) & 0x001FFFFF) * 0x100000000 + x.readUInt32BE(4);
+  return n % bits;
 
 }
 function readUInt128BE(x, offset = 0) {
@@ -35,7 +30,7 @@ function getBitsNeeded(number) {
 }
 class MurmurInstance {
 
-  constructor(size, bufferPoolSize = 10) {
+  constructor(size, bufferPoolSize = 8) {
     this.size = size;
     this.bufferPoolSize = bufferPoolSize;
     this.usedBuffer = -1;
@@ -48,10 +43,10 @@ class MurmurInstance {
 
   }
 
-  generateHash(key, seed) {
+  generateHash(key, seed,bits) {
     switch (this.hashSize) {
       case 32:
-        return this._handle32HashFunction(key, seed);
+        return this._handle32HashFunction(key, seed,bits);
       case 64:
         return this._handle64HashFunction(key, seed);
         break;
@@ -84,12 +79,12 @@ class MurmurInstance {
     assert.notEqual(typeof(cb), 'function');
     return readUInt128BE(murmurHash64(key, seed, 'buffer'), 0);
   }
-  _handle64HashFunction(key, seed) {
-    console.log('wootddd',this._bpool)
+  _handle64HashFunction(key, seed,bits) {
+
     const B = this._bpool.use();
     if (typeof(cb) != 'function') {
-      murmurHash64BE(key, seed, B.buffer);
-      const n = readUInt64BE(B.buffer, 0);
+      murmurHash64(key, seed, B.buffer);
+      const n = generateUInt48BE(B.buffer, 0,bits);
       B.free();
       return n;
     } else {
@@ -100,13 +95,13 @@ class MurmurInstance {
       });
     }
   }
-  _handle32HashFunction(key, seed, cb) {
+  _handle32HashFunction(key, seed,bits, cb) {
     const B = this._bpool.use();
     if (typeof(cb) != 'function') {
       murmurHash32(key, seed, B.buffer);
       const n = B.buffer.readUInt32BE();
       B.free();
-      return n;
+      return n % bits;;
     } else {
       murmurHash32(key, seed, B.buffer,(err,digest)=>{
         const n = B.buffer.readUInt32BE();
