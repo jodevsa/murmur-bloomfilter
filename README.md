@@ -44,18 +44,15 @@ console.log(filter.test("hey")); // true
 var filter = new BloomFilter(1000, 0.01);
 filter.add("hey");
 filter.add("woot");
-let buffer=filter.serialize();
-var newFilter=new BloomFilter(buffer);
-console.log(filter.test("hey")); // true
 
+filter.serialize("bloom.data",()=>{
+  const newFilter=BloomFilter.from("bloo.data").then(()=>{
+    newFilter.test("hey")  //true
+    newFilter.test("woot") //true
+  });
 
-/// serialization interface:
-var filter = new BloomFilter(1000, 0.01);
-filter.add("hey");
-filter.add("woot");
-let buffer=filter.serialize();
-var newFilter=new BloomFilter(buffer);
-filter.test('woot'); // true
+});
+
 ```
 
 Implementation
