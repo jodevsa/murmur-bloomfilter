@@ -46,7 +46,7 @@ test('it should answer be able to serialized', () => {
     'man',
     'woot'
   ];
-  const filter = new BloomFilter({m:20513876700,k:8});
+  const filter = new BloomFilter({m:10513876700,k:8});
   items.map(item => filter.add(item));
   filter.serialize(path, async () => {
     const filter2 = await BloomFilter.from(path);
